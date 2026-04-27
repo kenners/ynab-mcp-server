@@ -1,6 +1,7 @@
 """YNAB MCP Server using FastMCP and OpenAPI specification."""
 
 import os
+from typing import Any
 
 import httpx
 import yaml
@@ -14,10 +15,38 @@ YNAB_OPENAPI_SPEC_URL = "https://api.ynab.com/papi/open_api_spec.yaml"
 EXCLUDED_ROUTES = [
     RouteMap(
         methods=["GET"],
-        pattern=r"^/budgets/\{budget_id\}/payees$",
+        pattern=r"^/plans/\{plan_id\}/payees$",
         mcp_type=MCPType.EXCLUDE,
     ),
 ]
+
+
+def _normalize_nullable(node: Any) -> Any:
+    """Convert OpenAPI 3.0-style ``nullable: true`` to JSON Schema 3.1 ``type: "null"`` unions.
+
+    The YNAB spec declares ``openapi: 3.1.1`` but still uses the 3.0 ``nullable`` keyword
+    (e.g. on ``PlanSummaryResponse.data.default_plan``). FastMCP only runs its nullable
+    converter for ``openapi_version`` starting with "3.0", so on 3.1 specs the keyword is
+    dropped and the resulting JSON Schema rejects ``null`` values returned by the API,
+    surfacing as "Output validation error: None is not of type 'object'".
+    """
+    if isinstance(node, dict):
+        node = {k: _normalize_nullable(v) for k, v in node.items()}
+        if node.pop("nullable", False):
+            if any(k in node for k in ("allOf", "anyOf", "oneOf", "$ref")):
+                return {"anyOf": [node, {"type": "null"}]}
+            current_type = node.get("type")
+            if isinstance(current_type, list):
+                if "null" not in current_type:
+                    node["type"] = [*current_type, "null"]
+            elif isinstance(current_type, str):
+                node["type"] = [current_type, "null"]
+            else:
+                return {"anyOf": [node, {"type": "null"}]}
+        return node
+    if isinstance(node, list):
+        return [_normalize_nullable(item) for item in node]
+    return node
 
 
 def create_server() -> FastMCP:
@@ -32,7 +61,7 @@ def create_server() -> FastMCP:
     # Fetch the OpenAPI spec from YNAB
     spec_response = httpx.get(YNAB_OPENAPI_SPEC_URL)
     spec_response.raise_for_status()
-    openapi_spec = yaml.safe_load(spec_response.text)
+    openapi_spec = _normalize_nullable(yaml.safe_load(spec_response.text))
 
     # Create an authenticated HTTP client
     client = httpx.AsyncClient(
