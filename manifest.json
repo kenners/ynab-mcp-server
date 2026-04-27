@@ -1,0 +1,47 @@
+{
+  "manifest_version": "0.4",
+  "name": "ynab-mcp-server",
+  "display_name": "YNAB MCP Server",
+  "version": "0.1.0",
+  "description": "MCP server exposing the YNAB (You Need A Budget) API as tools.",
+  "long_description": "An MCP server built with FastMCP that auto-generates tools from the YNAB OpenAPI specification. Lets Claude read and modify your budgets, accounts, categories, transactions, scheduled transactions, and months. Requires a YNAB Personal Access Token.",
+  "author": {
+    "name": "Kenners",
+    "url": "https://github.com/kenners"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kenners/ynab-mcp-server"
+  },
+  "homepage": "https://github.com/kenners/ynab-mcp-server",
+  "documentation": "https://github.com/kenners/ynab-mcp-server#readme",
+  "license": "MIT",
+  "keywords": ["ynab", "budget", "finance", "mcp", "fastmcp"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/ynab_mcp_server/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "ynab-mcp-server"],
+      "env": {
+        "YNAB_API_TOKEN": "${user_config.ynab_api_token}"
+      }
+    }
+  },
+  "user_config": {
+    "ynab_api_token": {
+      "type": "string",
+      "title": "YNAB API Token",
+      "description": "Personal Access Token from https://app.ynab.com/settings/developer (Account Settings -> Developer Settings -> New Token).",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.11"
+    }
+  }
+}

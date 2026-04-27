@@ -1,0 +1,16 @@
+.git
+.gitignore
+.github
+.venv
+.skills/
+dist/
+__pycache__/
+**/__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.python-version
+.DS_Store
+node_modules/
+manifest.json.bak
